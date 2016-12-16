@@ -13,7 +13,7 @@ if nargin < 1
     quiet = 0;
 end
 
-t_begin(62, quiet);
+t_begin(66, quiet);
 
 casefile = 't_case9_pf';
 if quiet
@@ -75,6 +75,15 @@ t_is(branch, branch_soln, 6, [t 'branch']);
 %% run Gauss-Seidel PF
 t = 'Gauss-Seidel PF : ';
 mpopt = mpoption(mpopt, 'pf.alg', 'GS');
+[baseMVA, bus, gen, branch, success, et] = runpf(casefile, mpopt);
+t_ok(success, [t 'success']);
+t_is(bus, bus_soln, 5, [t 'bus']);
+t_is(gen, gen_soln, 5, [t 'gen']);
+t_is(branch, branch_soln, 5, [t 'branch']);
+
+%% run Implicit Z-bus Gauss PF
+t = 'Implicit Z-bus Gauss PF : ';
+mpopt = mpoption(mpopt, 'pf.alg', 'ZG');
 [baseMVA, bus, gen, branch, success, et] = runpf(casefile, mpopt);
 t_ok(success, [t 'success']);
 t_is(bus, bus_soln, 5, [t 'bus']);

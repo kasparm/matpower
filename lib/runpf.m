@@ -170,6 +170,8 @@ if ~isempty(mpc.bus)
                     solver = 'fast-decoupled, BX';
                 case 'GS'
                     solver = 'Gauss-Seidel';
+                case 'ZG'
+                    solver = 'Implicit Z-bus Gauss';
                 case 'PQSUM'
                     solver = 'Power Summation';
                 case 'ISUM'
@@ -222,6 +224,16 @@ if ~isempty(mpc.bus)
                                         struct('pw', [], 'qw', []));
                     end
                     [V, success, iterations] = gausspf(Ybus, Sbus([]), V0, ref, pv, pq, mpopt);
+                case 'ZG'
+                    if (~isempty(mpopt.exp.sys_wide_zip_loads.pw) && ...
+                            any(mpopt.exp.sys_wide_zip_loads.pw(2:3))) || ...
+                            (~isempty(mpopt.exp.sys_wide_zip_loads.qw) && ...
+                            any(mpopt.exp.sys_wide_zip_loads.qw(2:3)))
+                        warning('runpf: Zbus Gauss algorithm does not support ZIP load model. Converting to constant power loads.')
+                        mpopt = mpoption(mpopt, 'exp.sys_wide_zip_loads', ...
+                                        struct('pw', [], 'qw', []));
+                    end
+                    [V, success, iterations] = zgausspf(Ybus, Sbus([]), V0, ref, pv, pq, mpopt);
                 case {'PQSUM', 'ISUM', 'YSUM'}
                     [mpc, success, iterations] = radial_pf(mpc,mpopt);
                 otherwise
@@ -231,7 +243,7 @@ if ~isempty(mpc.bus)
         
             %% update data matrices with solution
             switch alg
-                case {'NR', 'FDXB', 'FDBX', 'GS'}
+                case {'NR', 'FDXB', 'FDBX', 'GS', 'ZG'}
                     [bus, gen, branch] = pfsoln(baseMVA, bus, gen, branch, Ybus, Yf, Yt, V, ref, pv, pq, mpopt);
                 case {'PQSUM', 'ISUM', 'YSUM'}
                     bus = mpc.bus;
