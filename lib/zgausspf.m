@@ -179,26 +179,24 @@ while (~converged && i < max_it)
 %         end
 
         %% update Q injections @ PV buses based on V mismatch
-        if npv
-            %% compute Q injection at current V (seems to help convergence)
-            Qpv = imag( V(pv) .* conj(Ybus(pv, :) * V) );
-            Sbus(pv) = Sbus(pv) + j * (Qpv - imag(Sbus(pv)));
+        %% compute Q injection at current V (seems to help convergence)
+        Qpv = imag( V(pv) .* conj(Ybus(pv, :) * V) );
+        Sbus(pv) = Sbus(pv) + j * (Qpv - imag(Sbus(pv)));
 
-            %% compute voltage mismatch at PV buses
-            Vmpv = abs(V(pv));
-            dV = Vmpv0 - Vmpv;
-            [max_dV, k] = max(abs(dV));
-%            dV([1:k-1 k+1:end]) = 0;   %% one at a time?
+        %% compute voltage mismatch at PV buses
+        Vmpv = abs(V(pv));
+        dV = Vmpv0 - Vmpv;
+        [max_dV, k] = max(abs(dV));
+%        dV([1:k-1 k+1:end]) = 0;   %% one at a time?
 
-            %% estimate corresponding change in Q injection
-            dI = UU \  (LL \ (PP * dV));
-%             dI = dVdI \ dV;
-%             dQ = dVdQ \ dV;
+        %% estimate corresponding change in Q injection
+        dI = UU \  (LL \ (PP * dV));
+%         dI = dVdI \ dV;
+%         dQ = dVdQ \ dV;
 
-            %% update Sbus
-            Sbus(pv) = Sbus(pv) - j * dI;
-%             Sbus(pv) = Sbus(pv) + j * dQ;
-        end
+        %% update Sbus
+        Sbus(pv) = Sbus(pv) - j * dI;
+%         Sbus(pv) = Sbus(pv) + j * dQ;
     end
 
     %% set voltage magnitude at PV buses
