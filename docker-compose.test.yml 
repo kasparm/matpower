@@ -1,3 +1,3 @@
 sut:
   build: .
-  command: octave-cli --eval 'test_mptest && test_mips && test_matpower && test_most && test_mll_main && test_sdp_pf && test_smartmarket && test_syngrid'
+  command: octave-cli --eval 'test_mptest && test_mips'
