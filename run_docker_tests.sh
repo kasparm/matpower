@@ -1,2 +1,2 @@
 #!/bin/bash
-octave-cli --eval 'test_mptest && test_mips'
+octave-cli --eval 'exit(1)'
