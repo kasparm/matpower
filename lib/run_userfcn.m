@@ -29,7 +29,14 @@ if ~isempty(userfcn) && isfield(userfcn, stage)
         else
             args = [];
         end
-        rv = feval(userfcn.(stage)(k).fcn, rv, varargin{2:end}, args);
+        % If varargin{2:end} is empty and args is not empty, we need to
+        % pass an empty element. Otherwise the second arguent of
+        % the userfcn will be replaced by args.
+        if nargin < 4
+            rv = feval(userfcn.(stage)(k).fcn, rv, [], args);
+        else
+            rv = feval(userfcn.(stage)(k).fcn, rv, varargin{2:end}, args);
+        end
         % mpc     = userfcn_*_ext2int(mpc, mpopt, args);
         % om      = userfcn_*_formulation(om, mpopt, args);
         % results = userfcn_*_int2ext(results, mpopt, args);
