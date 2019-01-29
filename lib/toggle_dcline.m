@@ -309,7 +309,14 @@ function om = userfcn_dcline_formulation(om, mpopt, args)
 c = idx_dcline;
 
 %% initialize some things
-mpc = om.get_mpc();
+% Need to use strcmp because isa does not distinguish sub-class form class.
+% The if statement could be arranged such that isa could be used but that
+% would make the code less readable and error more error prone.
+if strcmp(class(om),'opt_model')
+    mpc = args.mpc;
+elseif strcmp(class(om),'opf_model')
+    mpc = om.get_mpc();
+end
 dc = mpc.dcline;
 ndc = size(dc, 1);              %% number of in-service DC lines
 ng  = size(mpc.gen, 1) - 2*ndc; %% number of original gens/disp loads
@@ -320,8 +327,11 @@ L1  =  dc(:, c.LOSS1);
 Adc = [sparse(ndc, ng) spdiags(1-L1, 0, ndc, ndc) speye(ndc, ndc)];
 
 %% add them to the model
-om.add_lin_constraint('dcline', Adc, nL0, nL0, {'Pg'});
-
+if strcmp(class(om),'opt_model')
+    om.add_constraints('dcline', args.vs.idx, Adc, nL0, nL0, args.vs);
+elseif strcmp(class(om),'opf_model')
+    om.add_lin_constraint('dcline', Adc, nL0, nL0, {'Pg'});
+end
 
 %%-----  int2ext  ------------------------------------------------------
 function results = userfcn_dcline_int2ext(results, mpopt, args)
