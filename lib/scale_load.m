@@ -270,12 +270,13 @@ end
 %%-----  do the scaling  -----
 %% fixed loads
 if opt.which(1) ~= 'D'      %% includes 'FIXED', not 'DISPATCHABLE' only
-    for k = 1:length(scale)
-        idx = find( load_zone == k );
-        bus(idx, PD) = bus(idx, PD) * scale(k);
-        if strcmp(opt.pq, 'PQ')
-            bus(idx, QD) = bus(idx, QD) * scale(k);
-        end
+    % find all scalable indices (integers from 1 to length of scale vector)
+    idx = find(load_zone <= length(scale));
+    % resolve indices to corresponding scale values
+    bus(idx, PD) = bus(idx, PD) .* scale(load_zone(idx));
+    
+    if strcmp(opt.pq, 'PQ')
+        bus(idx, QD) = bus(idx, QD) .* scale(load_zone(idx));
     end
 end
 
