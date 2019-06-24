@@ -102,7 +102,7 @@ else                %% aggregate
                     disp("commented out code for condition didn't run")
                 else
                     jj = om.varsets_idx(vs);    %% indices for var set
-                    Ak_all_cols = zeros(mk, nx);
+                    Ak_all_cols = sparse(mk, nx);
                     Ak_all_cols(:, jj) = Ak;
                     %Akt_full(:, i1:iN) = Ak_all_cols';
                     Akt_full(:, i1:iN) = Akt_full(:, i1:iN) + Ak_all_cols';
