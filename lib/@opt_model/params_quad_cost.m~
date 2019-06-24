@@ -105,22 +105,18 @@ else                %% aggregate
                     Qk_all_cols(:, jj) = Qk;
                     Qkt_full = sparse(nx, nx);
                     % Qkt_full(:, jj) = Qk_all_cols';
-                    Qkt_full(:, jj) = Qkt_full(:, jj) + Qk_all_cols';
+                    Qkt_full(:, jj) = Qk_all_cols';
                 end
                 if havec
-                    %ck_full = zeros(nx, 1);
-                    ck_full = sparse(nx, 1);
-                    % ck_full(jj) = ck;
-                    ck_full(jj) = ck_full(jj) + ck;
+                    ck_full = zeros(nx, 1);
+                    ck_full(jj) = ck;
                 end
             end
             if haveQ
-                % Qt = Qt + Qkt_full;
-                Qt = Qkt_full;
+                Qt = Qt + Qkt_full;
             end
             if havec
-                % c = c + ck_full;
-                c = ck_full;
+                c = c + ck_full;
             end
             k = k + sum(kk);
         end
