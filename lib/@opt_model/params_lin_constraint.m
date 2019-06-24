@@ -92,20 +92,23 @@ else                %% aggregate
             if mk
                 Akt_full = sparse(nx, nlin);
                 if isempty(vs)
-                    if nk == nx     %% full size
-                        Akt_full(:, i1:iN) = Ak';
-                    else            %% vars added since adding this cost set
-                        Ak_all_cols = sparse(mk, nx);
-                        Ak_all_cols(:, 1:nk) = Ak;
-                        Akt_full(:, i1:iN) = Ak_all_cols';
-                    end
+%                     if nk == nx     %% full size
+%                         Akt_full(:, i1:iN) = Ak';
+%                     else            %% vars added since adding this cost set
+%                         Ak_all_cols = sparse(mk, nx);
+%                         Ak_all_cols(:, 1:nk) = Ak;
+%                         Akt_full(:, i1:iN) = Ak_all_cols';
+%                     end
+                    disp("commented out code for condition didn't run")
                 else
                     jj = om.varsets_idx(vs);    %% indices for var set
                     Ak_all_cols = sparse(mk, nx);
                     Ak_all_cols(:, jj) = Ak;
-                    Akt_full(:, i1:iN) = Ak_all_cols';
+                    %Akt_full(:, i1:iN) = Ak_all_cols';
+                    Akt_full(:, i1:iN) = Akt_full(:, i1:iN) + Ak_all_cols';
                 end
-                At = At + Akt_full;
+                %At = At + Akt_full;
+                At = Akt_full;
                 l(i1:iN) = lk;
                 u(i1:iN) = uk;
             end

@@ -176,20 +176,23 @@ else                %% aggregate
             if mk
                 Nkt_full = sparse(nx, nw);
                 if isempty(vs)
-                    if nk == nx     %% full size
-                        Nkt_full(:, i1:iN) = cp.N';
-                    else            %% vars added since adding this cost set
-                        Nk_all_cols = sparse(mk, nx);
-                        Nk_all_cols(:, 1:nk) = cp.N;
-                        Nkt_full(:, i1:iN) = Nk_all_cols';
-                    end
+%                     if nk == nx     %% full size
+%                         Nkt_full(:, i1:iN) = cp.N';
+%                     else            %% vars added since adding this cost set
+%                         Nk_all_cols = sparse(mk, nx);
+%                         Nk_all_cols(:, 1:nk) = cp.N;
+%                         Nkt_full(:, i1:iN) = Nk_all_cols';
+%                     end
+                    disp("Commented out for condition didn't run")
                 else
                     jj = om.varsets_idx(vs);    %% indices for var set
                     Nk_all_cols = sparse(mk, nx);
                     Nk_all_cols(:, jj) = cp.N;
-                    Nkt_full(:, i1:iN) = Nk_all_cols';
+                    %Nkt_full(:, i1:iN) = Nk_all_cols';
+                    Nkt_full(:, i1:iN) = Nkt_full(:, i1:iN) + Nk_all_cols';
                 end
-                Nt = Nt + Nkt_full;
+                %Nt = Nt + Nkt_full;
+                Nt = Nkt_full;
                 Cw(i1:iN) = cp.Cw;
                 H_all_cols = sparse(mk, nw);
                 H_all_cols(:, i1:iN) = cp.H';
