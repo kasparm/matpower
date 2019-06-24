@@ -186,7 +186,7 @@ else                %% aggregate
                     disp("Commented out for condition didn't run")
                 else
                     jj = om.varsets_idx(vs);    %% indices for var set
-                    Nk_all_cols = sparse(mk, nx);
+                    Nk_all_cols = zeros(mk, nx);
                     Nk_all_cols(:, jj) = cp.N;
                     %Nkt_full(:, i1:iN) = Nk_all_cols';
                     Nkt_full(:, i1:iN) = Nkt_full(:, i1:iN) + Nk_all_cols';
@@ -194,7 +194,7 @@ else                %% aggregate
                 %Nt = Nt + Nkt_full;
                 Nt = Nkt_full;
                 Cw(i1:iN) = cp.Cw;
-                H_all_cols = sparse(mk, nw);
+                H_all_cols = zeros(mk, nw);
                 H_all_cols(:, i1:iN) = cp.H';
                 H(:, i1:iN) = H_all_cols';
                 dd(i1:iN) = cp.dd;
