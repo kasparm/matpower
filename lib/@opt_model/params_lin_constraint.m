@@ -83,34 +83,28 @@ else                %% aggregate
         u = Inf(nlin, 1);       %% upper bound
         l = -u;                 %% lower bound
 
+        sparseInds = cell(om.lin.NS,3);
+        
         %% fill in each piece
         for k = 1:om.lin.NS
             name = om.lin.order(k).name;
             idx  = om.lin.order(k).idx;
             [Ak, lk, uk, vs, i1, iN] = om.params_lin_constraint(name, idx);
-            [mk, nk] = size(Ak);        %% size of Ak
+            
             if mk
-                Akt_full = sparse(nx, nlin);
-                if isempty(vs)
-                    if nk == nx     %% full size
-                        Akt_full(:, i1:iN) = Ak';
-                    else            %% vars added since adding this cost set
-                        Ak_all_cols = sparse(mk, nx);
-                        Ak_all_cols(:, 1:nk) = Ak;
-                        Akt_full(:, i1:iN) = Ak_all_cols';
-                    end
+                if isempty(vs)                    
+                    [rowInds,colInds,vals] = find(Ak);
+                    sparseInds(k,:) = {rowInds,colInds+(i1-1),vals};
                 else
+                    [rowInds,~,vals] = find(Ak);
                     jj = om.varsets_idx(vs);    %% indices for var set
-                    Ak_all_cols = sparse(mk, nx);
-                    Ak_all_cols(:, jj) = Ak;
-                    Akt_full(:, i1:iN) = Ak_all_cols';
+                    sparseInds(k,:) = {rowInds,jj+(i1-1),vals};
                 end
-                At = At + Akt_full;
                 l(i1:iN) = lk;
                 u(i1:iN) = uk;
             end
         end
-        A = At';
+        A = sparse([sparseInds{:,1}],[sparseInds{:,2}],[sparseInds{:,3}], nlin, nx);
 
         %% cache aggregated parameters
         om.lin.params = struct('A', A, 'l', l, 'u', u);
