@@ -93,6 +93,7 @@ else                %% aggregate
             [mk, nk] = size(Ak);        %% size of Ak
             
             if mk
+                % find nonzero sub indices and values
                 [rowInds,colInds,nonzeroVals] = find(Ak);
      
                 if isempty(vs)
@@ -100,7 +101,7 @@ else                %% aggregate
                     sparseInds(k,:) = {rowInds, colInds+(i1-1), nonzeroVals};
                 else
                     jj = om.varsets_idx(vs)';    %% indices for var set
-                    % transposed jj indices to map to full sparse matrix
+                    % transposed jj indices map to full sparse matrix
                     sparseInds(k,:) = {rowInds, jj(colInds), nonzeroVals};
                 end
                 l(i1:iN) = lk;
