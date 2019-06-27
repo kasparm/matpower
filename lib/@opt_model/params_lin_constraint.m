@@ -79,10 +79,10 @@ else                %% aggregate
     if isempty(cache)       %% build the aggregate
         nx = om.var.N;          %% number of variables
         nlin = om.lin.N;        %% number of linear constraints
-        At = sparse(nx, nlin);  %% transpose of constraint matrix
         u = Inf(nlin, 1);       %% upper bound
         l = -u;                 %% lower bound
 
+        % columns 1,2 are sub indices i,j; column 3 is the nonzero values
         sparseInds = cell(om.lin.NS,3);
         
         %% fill in each piece
@@ -90,21 +90,27 @@ else                %% aggregate
             name = om.lin.order(k).name;
             idx  = om.lin.order(k).idx;
             [Ak, lk, uk, vs, i1, iN] = om.params_lin_constraint(name, idx);
+            [mk, nk] = size(Ak);        %% size of Ak
             
             if mk
+                [rowInds,colInds,nonzeroVals] = find(Ak);
+     
                 if isempty(vs)                    
-                    [rowInds,colInds,vals] = find(Ak);
-                    sparseInds(k,:) = {rowInds,colInds+(i1-1),vals};
+                    sparseInds(k,:) = {rowInds,colInds+(i1-1),nonzeroVals};
                 else
-                    [rowInds,~,vals] = find(Ak);
-                    jj = om.varsets_idx(vs);    %% indices for var set
-                    sparseInds(k,:) = {rowInds,jj+(i1-1),vals};
+                    jj = om.varsets_idx(vs)';    %% indices for var set
+                    sparseInds(k,:) = {rowInds,jj(colInds),nonzeroVals};
                 end
                 l(i1:iN) = lk;
                 u(i1:iN) = uk;
             end
         end
-        A = sparse([sparseInds{:,1}],[sparseInds{:,2}],[sparseInds{:,3}], nlin, nx);
+        
+        I = vertcat(sparseInds{:,1});
+        J = vertcat(sparseInds{:,2});
+        nonzeroValues = vertcat(sparseInds{:,3});
+        
+        A = sparse(I, J, nonzeroValues, nlin, nx);
 
         %% cache aggregated parameters
         om.lin.params = struct('A', A, 'l', l, 'u', u);
