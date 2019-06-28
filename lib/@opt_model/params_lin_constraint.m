@@ -98,11 +98,11 @@ else                %% aggregate
      
                 if isempty(vs)
                     % shift column indices to full sparse matrix
-                    sparseInds(k,:) = {rowInds, colInds+(i1-1), nonzeroVals};
+                    sparseInds(k,:) = {rowInds+(i1-1), colInds, nonzeroVals};
                 else
                     jj = om.varsets_idx(vs)';    %% indices for var set
-                    % transposed jj indices map to full sparse matrix
-                    sparseInds(k,:) = {rowInds, jj(colInds), nonzeroVals};
+                    % jj indices map and later shift to shift to full matrix
+                    sparseInds(k,:) = {rowInds+(i1-1), jj(colInds), nonzeroVals};
                 end
                 l(i1:iN) = lk;
                 u(i1:iN) = uk;
