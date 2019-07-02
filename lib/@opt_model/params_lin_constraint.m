@@ -79,38 +79,41 @@ else                %% aggregate
     if isempty(cache)       %% build the aggregate
         nx = om.var.N;          %% number of variables
         nlin = om.lin.N;        %% number of linear constraints
-        At = sparse(nx, nlin);  %% transpose of constraint matrix
         u = Inf(nlin, 1);       %% upper bound
         l = -u;                 %% lower bound
 
+        % columns 1,2 are sub indices i,j; column 3 is the nonzero values
+        sparseInds = cell(om.lin.NS,3);
+        
         %% fill in each piece
         for k = 1:om.lin.NS
             name = om.lin.order(k).name;
             idx  = om.lin.order(k).idx;
             [Ak, lk, uk, vs, i1, iN] = om.params_lin_constraint(name, idx);
             [mk, nk] = size(Ak);        %% size of Ak
+            
             if mk
-                Akt_full = sparse(nx, nlin);
+                % find nonzero sub indices and values
+                [rowInds,colInds,nonzeroVals] = find(Ak);
+     
                 if isempty(vs)
-                    if nk == nx     %% full size
-                        Akt_full(:, i1:iN) = Ak';
-                    else            %% vars added since adding this cost set
-                        Ak_all_cols = sparse(mk, nx);
-                        Ak_all_cols(:, 1:nk) = Ak;
-                        Akt_full(:, i1:iN) = Ak_all_cols';
-                    end
+                    % shift column indices to full sparse matrix
+                    sparseInds(k,:) = {rowInds+(i1-1), colInds, nonzeroVals};
                 else
-                    jj = om.varsets_idx(vs);    %% indices for var set
-                    Ak_all_cols = sparse(mk, nx);
-                    Ak_all_cols(:, jj) = Ak;
-                    Akt_full(:, i1:iN) = Ak_all_cols';
+                    jj = om.varsets_idx(vs)';    %% indices for var set
+                    % jj indices map and later shift to shift to full matrix
+                    sparseInds(k,:) = {rowInds+(i1-1), jj(colInds), nonzeroVals};
                 end
-                At = At + Akt_full;
                 l(i1:iN) = lk;
                 u(i1:iN) = uk;
             end
         end
-        A = At';
+        
+        I = vertcat(sparseInds{:,1});
+        J = vertcat(sparseInds{:,2});
+        nonzeroValues = vertcat(sparseInds{:,3});
+        
+        A = sparse(I, J, nonzeroValues, nlin, nx);
 
         %% cache aggregated parameters
         om.lin.params = struct('A', A, 'l', l, 'u', u);
