@@ -63,63 +63,54 @@ else                %% aggregate
     cache = om.qdc.params;
     if isempty(cache)       %% build the aggregate
         nx = om.var.N;          %% number of variables
-        Qt = sparse(nx, nx);    %% transpose of quadratic coefficients
         c = zeros(nx, 1);       %% linear coefficients
         k = 0;                  %% constant term
+        
+        Q_SparseInds = cell(om.qdc.NS,3);
+        c_SparseInds = cell(om.qdc.NS,3);
+        
         for i = 1:om.qdc.NS
             name = om.qdc.order(i).name;
             idx  = om.qdc.order(i).idx;
             [Qk, ck, kk, vs] = om.params_quad_cost(name, idx);
             haveQ = ~isempty(Qk);
             havec = ~isempty(ck);
-            nk = max(size(Qk, 1), size(ck, 1));     %% size of Qk and/or ck
+
             if isempty(vs)
-                if nk == nx     %% full size
-                    if size(Qk, 2) == 1     %% Qk is a column vector
-                        Qkt_full = spdiags(Qk, 0, nx, nx);
-                    elseif haveQ            %% Qk is a matrix
-                        Qkt_full = Qk';
-                    end
-                    if havec
-                        ck_full = ck;
-                    end
-                else            %% vars added since adding this cost set
-                    if size(Qk, 2) == 1     %% Qk is a column vector
-                        Qkt_full = sparse(1:nk, 1:nk, Qk, nx, nx);
-                    elseif haveQ            %% Qk is a matrix
-                        Qk_all_cols = sparse(nk, nx);
-                        Qk_all_cols(:, 1:nk) = Qk;
-                        Qkt_full(:, 1:nk) = Qk_all_cols';
-                    end
-                    if havec
-                        ck_full = zeros(nx, 1);
-                        ck_full(1:nk) = ck;
-                    end
-                end
-            else
-                jj = om.varsets_idx(vs);    %% indices for var set
-                if size(Qk, 2) == 1     %% Qk is a column vector
-                    Qkt_full = sparse(jj, jj, Qk, nx, nx);
-                elseif haveQ            %% Qk is a matrix
-                    Qk_all_cols = sparse(nk, nx);
-                    Qk_all_cols(:, jj) = Qk;
-                    Qkt_full = sparse(nx, nx);
-                    Qkt_full(:, jj) = Qk_all_cols';
+                % vars added since adding this cost set
+                if haveQ            %% Qk is a matrix
+                    [rowInds,colInds,nonzeroVals] = find(Qk);
+                    Q_SparseInds(i,:) = {rowInds, colInds, nonzeroVals};
                 end
                 if havec
-                    ck_full = zeros(nx, 1);
-                    ck_full(jj) = ck;
+                    [rowInds,colInds,nonzeroVals] = find(ck);
+                    c_SparseInds(i,:) = {rowInds, colInds, nonzeroVals};
                 end
-            end
-            if haveQ
-                Qt = Qt + Qkt_full;
-            end
-            if havec
-                c = c + ck_full;
+            else
+                jj = om.varsets_idx(vs)';    %% indices for var set
+                if haveQ
+                    [rowInds,colInds,nonzeroVals] = find(Qk);
+                    Q_SparseInds(i,:) = {rowInds, jj(colInds), nonzeroVals};
+                end
+                if havec
+                    [rowInds,colInds,nonzeroVals] = find(ck);
+                    c_SparseInds(i,:) = {jj(rowInds), colInds, nonzeroVals};
+                end
             end
             k = k + sum(kk);
         end
-        Q = Qt';
+        
+        I = vertcat(Q_SparseInds{:,1});
+        J = vertcat(Q_SparseInds{:,2});
+        nonzeroValues = vertcat(Q_SparseInds{:,3});
+        
+        Q = sparse(I, J, nonzeroValues, nx, nx);
+        
+        I = vertcat(c_SparseInds{:,1});
+        J = vertcat(c_SparseInds{:,2});
+        nonzeroValues = vertcat(c_SparseInds{:,3});
+        
+        c = sparse(I, J, nonzeroValues, nx, 1);
 
         %% cache aggregated parameters
         om.qdc.params = struct('Q', Q, 'c', c, 'k', k);
