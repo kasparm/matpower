@@ -66,6 +66,7 @@ else                %% aggregate
         c = zeros(nx, 1);       %% linear coefficients
         k = 0;                  %% constant term
         
+        % columns 1,2 are sub indices i,j; column 3 is nonzero values
         Q_SparseInds = cell(om.qdc.NS,3);
         c_SparseInds = cell(om.qdc.NS,3);
         
@@ -89,7 +90,9 @@ else                %% aggregate
             else
                 jj = om.varsets_idx(vs)';    %% indices for var set
                 if haveQ
+                    % find nonzero sub indices and values
                     [rowInds,colInds,nonzeroVals] = find(Qk);
+                     % jj indices map to full matrix
                     Q_SparseInds(i,:) = {rowInds, jj(colInds), nonzeroVals};
                 end
                 if havec
@@ -100,10 +103,14 @@ else                %% aggregate
             k = k + sum(kk);
         end
         
+        % concatenate all indices from earlier loop together
         I = vertcat(Q_SparseInds{:,1});
         J = vertcat(Q_SparseInds{:,2});
         nonzeroValues = vertcat(Q_SparseInds{:,3});
         
+        % create a new sparse matrix where nonzero values with the same
+        % subindices are summed, detailed in documentation here
+        % https://www.mathworks.com/help/matlab/ref/sparse.html
         Q = sparse(I, J, nonzeroValues, nx, nx);
         
         I = vertcat(c_SparseInds{:,1});

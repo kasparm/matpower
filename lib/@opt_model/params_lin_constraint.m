@@ -82,7 +82,7 @@ else                %% aggregate
         u = Inf(nlin, 1);       %% upper bound
         l = -u;                 %% lower bound
 
-        % columns 1,2 are sub indices i,j; column 3 is the nonzero values
+        % columns 1,2 are sub indices i,j; column 3 is nonzero values
         sparseInds = cell(om.lin.NS,3);
         
         %% fill in each piece
@@ -109,10 +109,14 @@ else                %% aggregate
             end
         end
         
+        % concatenate all indices from earlier loop together
         I = vertcat(sparseInds{:,1});
         J = vertcat(sparseInds{:,2});
         nonzeroValues = vertcat(sparseInds{:,3});
         
+        % create a new sparse matrix where nonzero values with the same
+        % subindices are summed, detailed in documentation here
+        % https://www.mathworks.com/help/matlab/ref/sparse.html
         A = sparse(I, J, nonzeroValues, nlin, nx);
 
         %% cache aggregated parameters
