@@ -68,7 +68,6 @@ else                %% aggregate
         
         % columns 1,2 are sub indices i,j; column 3 is nonzero values
         Q_SparseInds = cell(om.qdc.NS,3);
-        c_SparseInds = cell(om.qdc.NS,3);
         
         for i = 1:om.qdc.NS
             name = om.qdc.order(i).name;
@@ -76,29 +75,40 @@ else                %% aggregate
             [Qk, ck, kk, vs] = om.params_quad_cost(name, idx);
             haveQ = ~isempty(Qk);
             havec = ~isempty(ck);
-
+            nk = max(size(Qk, 1), size(ck, 1));     %% size of Qk and/or ck
             if isempty(vs)
                 % vars added since adding this cost set
-                if haveQ            %% Qk is a matrix
+                if size(Qk, 2) == 1     %% Qk is a column vector
+                    [rowInds,colInds,nonzeroVals] = find(Qk);
+                    Q_SparseInds(i,:) = {rowInds, rowInds, nonzeroVals};
+                elseif haveQ            %% Qk is a matrix
                     [rowInds,colInds,nonzeroVals] = find(Qk);
                     Q_SparseInds(i,:) = {rowInds, colInds, nonzeroVals};
                 end
                 if havec
-                    [rowInds,colInds,nonzeroVals] = find(ck);
-                    c_SparseInds(i,:) = {rowInds, colInds, nonzeroVals};
+                    if nk == nx     %% full size
+                        ck_full = ck;
+                    else            %% vars added since adding this cost set
+                        ck_full = zeros(nx, 1);
+                        ck_full(1:nk) = ck;
+                    end
                 end
             else
                 jj = om.varsets_idx(vs)';    %% indices for var set
-                if haveQ
-                    % find nonzero sub indices and values
+                if size(Qk, 2) == 1     %% Qk is a column vector
                     [rowInds,colInds,nonzeroVals] = find(Qk);
-                     % jj indices map to full matrix
-                    Q_SparseInds(i,:) = {rowInds, jj(colInds), nonzeroVals};
+                    Q_SparseInds(i,:) = {jj(rowInds), jj(rowInds), nonzeroVals};
+                elseif haveQ            %% Qk is a matrix
+                    [rowInds,colInds,nonzeroVals] = find(Qk);
+                    Q_SparseInds(i,:) = {jj(rowInds), jj(colInds), nonzeroVals};
                 end
                 if havec
-                    [rowInds,colInds,nonzeroVals] = find(ck);
-                    c_SparseInds(i,:) = {jj(rowInds), colInds, nonzeroVals};
+                    ck_full = zeros(nx, 1);
+                    ck_full(jj) = ck;
                 end
+            end
+            if havec
+                c = c + ck_full;
             end
             k = k + sum(kk);
         end
@@ -113,12 +123,6 @@ else                %% aggregate
         % https://www.mathworks.com/help/matlab/ref/sparse.html
         Q = sparse(I, J, nonzeroValues, nx, nx);
         
-        I = vertcat(c_SparseInds{:,1});
-        J = vertcat(c_SparseInds{:,2});
-        nonzeroValues = vertcat(c_SparseInds{:,3});
-        
-        c = sparse(I, J, nonzeroValues, nx, 1);
-
         %% cache aggregated parameters
         om.qdc.params = struct('Q', Q, 'c', c, 'k', k);
     else                    %% return cached values
