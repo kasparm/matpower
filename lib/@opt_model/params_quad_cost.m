@@ -68,6 +68,7 @@ else                %% aggregate
         
         % columns 1,2 are sub indices i,j; column 3 is nonzero values
         Q_SparseInds = cell(om.qdc.NS,3);
+        c_Inds = cell(om.qdc.NS,3);
         
         for i = 1:om.qdc.NS
             name = om.qdc.order(i).name;
@@ -103,12 +104,9 @@ else                %% aggregate
                     Q_SparseInds(i,:) = {jj(rowInds), jj(colInds), nonzeroVals};
                 end
                 if havec
-                    ck_full = zeros(nx, 1);
-                    ck_full(jj) = ck;
+                    [rowInds,colInds,values] = find(ck);
+                    c_Inds(i,:) = {jj(rowInds), colInds, values};
                 end
-            end
-            if havec
-                c = c + ck_full;
             end
             k = k + sum(kk);
         end
@@ -122,6 +120,11 @@ else                %% aggregate
         % subindices are summed, detailed in documentation here
         % https://www.mathworks.com/help/matlab/ref/sparse.html
         Q = sparse(I, J, nonzeroValues, nx, nx);
+        
+        subs = cell2mat(c_Inds(:,1:2));
+        values = cell2mat(c_Inds(:,3));
+        
+        c = accumarray(subs, values, [nx,1]);
         
         %% cache aggregated parameters
         om.qdc.params = struct('Q', Q, 'c', c, 'k', k);
