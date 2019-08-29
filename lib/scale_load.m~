@@ -268,47 +268,17 @@ if opt.scale(1) == 'Q'  %% 'QUANTITY'
 end
 
 %%-----  do the scaling  -----
-% %% fixed loads
-% if opt.which(1) ~= 'D'      %% includes 'FIXED', not 'DISPATCHABLE' only
-% %    for k = 1:length(scale)
-%         idx = find( load_zone > 0 );
-%         for i = idx
-%             bus(i, PD) = bus(i, PD) .* scale(load_zone(i));
-%             if strcmp(opt.pq, 'PQ')
-%                 bus(i, QD) = bus(i, QD) .* scale(load_zone(i));
-%             end
-%         end
-% %    end
-% end
-
-% if opt.which(1) ~= 'D'      %% includes 'FIXED', not 'DISPATCHABLE' only
-%     %    for k = 1:length(scale)
-%     idx = find( load_zone > 0 );
-%     bus(idx, PD) = bus(idx, PD) .* scale(load_zone(idx));
-%     if strcmp(opt.pq, 'PQ')
-%         bus(idx, QD) = bus(idx, QD) .* scale(load_zone(idx));
-%     end
-%     %    end
-% end
-% 
-% if opt.which(1) ~= 'D'      %% includes 'FIXED', not 'DISPATCHABLE' only
-%     for k = 1:length(scale)
-%         idx = find( load_zone == k );
-%         bus(idx, PD) = bus(idx, PD) * scale(k);
-%         if strcmp(opt.pq, 'PQ')
-%             bus(idx, QD) = bus(idx, QD) * scale(k);
-%         end
-%     end
-% end
-
+%% fixed loads
 if opt.which(1) ~= 'D'      %% includes 'FIXED', not 'DISPATCHABLE' only
-    for k = 1:length(scale)
-        idx = load_zone == k;
-        bus(idx, PD) = bus(idx, PD) * scale(k);
+    scale_with_zero = [1,scale];
+%    for k = 1:length(scale)
+        idx = find( load_zone > 0 );
+        [~,~,repInd] = unique(load_zone);
+        bus(:, PD) = bus(:, PD) .* scale_with_zero(repInd);
         if strcmp(opt.pq, 'PQ')
-            bus(idx, QD) = bus(idx, QD) * scale(k);
+            bus(:, QD) = bus(:, QD) .* scale_with_zero(repInd);
         end
-    end
+%    end
 end
 
 %% dispatchable loads
