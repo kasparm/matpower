@@ -1,4 +1,4 @@
-function [bus, gen, gencost] = scale_load(dmd, bus, gen, load_zone, opt, gencost)
+function [mpc, gen, gencost] = scale_load(dmd, mpc, gen, load_zone, opt, gencost)
 %SCALE_LOAD Scales fixed and/or dispatchable loads.
 %   MPC = SCALE_LOAD(LOAD, MPC);
 %   MPC = SCALE_LOAD(LOAD, MPC, LOAD_ZONE)
@@ -106,10 +106,10 @@ function [bus, gen, gencost] = scale_load(dmd, bus, gen, load_zone, opt, gencost
     PMAX, PMIN, MU_PMAX, MU_PMIN, MU_QMAX, MU_QMIN] = idx_gen;
 
 %%-----  process inputs  -----
-if ischar(bus)      %% passing in case as file name string
-    bus = loadcase(bus);
+if ischar(mpc)      %% passing in case as file name string
+    mpc = loadcase(mpc);
 end
-if isstruct(bus)
+if isstruct(mpc)
     use_mpc = 1;
     if nargin < 4
         load_zone = struct;
@@ -120,9 +120,8 @@ if isstruct(bus)
     %% shift and reassign inputs
     opt = load_zone;
     load_zone = gen;
-    mpc = bus;
     gen = mpc.gen;
-    bus = mpc.bus;
+    mpc = mpc.bus;
     if isfield(mpc, 'gencost')
         gencost = mpc.gencost;
     else
@@ -190,14 +189,14 @@ if nargout > 2 && isempty(gencost)
 end
 
 %% create dispatchable load connection matrix
-nb = size(bus, 1);          %% number of buses
+nb = size(mpc, 1);          %% number of buses
 if ~isempty(gen)
     ng = size(gen, 1);
     is_ld = isload(gen) & gen(:, GEN_STATUS) > 0;
     ld = find(is_ld);
 
     %% create map of external bus numbers to bus indices
-    i2e = bus(:, BUS_I);
+    i2e = mpc(:, BUS_I);
     e2i = zeros(max(i2e), 1);
     e2i(i2e) = (1:nb)';
 
@@ -210,12 +209,12 @@ end
 if isempty(load_zone)
     if length(dmd) == 1         %% make a single zone of all load buses
         load_zone = zeros(nb, 1);                           %% initialize
-        load_zone(bus(:, PD) ~= 0 | bus(:, QD) ~= 0) = 1;   %% FIXED loads
+        load_zone(mpc(:, PD) ~= 0 | mpc(:, QD) ~= 0) = 1;   %% FIXED loads
         if ~isempty(gen)
             load_zone(e2i(gen(ld, GEN_BUS))) = 1;   %% DISPATCHABLE loads
         end
     else                        %% use areas defined in bus data as zones
-        load_zone = bus(:, BUS_AREA);
+        load_zone = mpc(:, BUS_AREA);
     end
 end
 
@@ -236,7 +235,7 @@ if opt.scale(1) == 'Q'  %% 'QUANTITY'
     %% compute scale factors
     for k = 1:length(dmd)
         idx = find( load_zone == k );
-        fixed = sum(bus(idx, PD));
+        fixed = sum(mpc(idx, PD));
         dispatchable = sum(Pdd(idx));
         total = fixed + dispatchable;
         if opt.which(1) == 'B'      %% 'BOTH'
@@ -272,9 +271,9 @@ end
 if opt.which(1) ~= 'D'      %% includes 'FIXED', not 'DISPATCHABLE' only
     for k = 1:length(scale)
         idx = find( load_zone == k );
-        bus(idx, PD) = bus(idx, PD) * scale(k);
+        mpc(idx, PD) = mpc(idx, PD) * scale(k);
         if strcmp(opt.pq, 'PQ')
-            bus(idx, QD) = bus(idx, QD) * scale(k);
+            mpc(idx, QD) = mpc(idx, QD) * scale(k);
         end
     end
 end
@@ -307,10 +306,10 @@ end
 
 %% re-package outputs if necessary
 if use_mpc
-    mpc.bus = bus;
+    mpc.bus = mpc;
     mpc.gen = gen;
     if opt.cost
         mpc.gencost = gencost;
     end
-    bus = mpc;
+    mpc = mpc;
 end
