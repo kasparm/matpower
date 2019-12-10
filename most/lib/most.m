@@ -708,16 +708,14 @@ if mpopt.most.build_model
   % injections
   om.init_indexed_name('var', 'Psc', {nt, nj_max, nc_max+1});
   om.init_indexed_name('var', 'Psd', {nt, nj_max, nc_max+1});
-  for t = 1:nt
-    for j = 1:mdi.idx.nj(t)
-      for k = 1:mdi.idx.nc(t,j)+1
-        if ns
+  if ns
+    for t = 1:nt
+      for j = 1:mdi.idx.nj(t)
+        for k = 1:mdi.idx.nc(t,j)+1
           om.add_var('Psc', {t,j,k}, ns, [], [], zeros(ns,1));
         end
       end
     end
-  end
-  if ns
     for t = 1:nt
       for j = 1:mdi.idx.nj(t)
         for k = 1:mdi.idx.nc(t,j)+1
@@ -823,6 +821,9 @@ if mpopt.most.build_model
       end
     end
   end
+
+  %% handing of user-defined variables would go here
+
   nvars = om.getN('var');
   mdi.idx.nvars = nvars;
 
@@ -1040,7 +1041,7 @@ if mpopt.most.build_model
     fprintf('  - Building CCV constraints for piecewise-linear costs.\n');
   end
   om.init_indexed_name('lin', 'ycon', {nt, nj_max, nc_max+1});
-  for t = 1:nt,
+  for t = 1:nt
     for j = 1:mdi.idx.nj(t)
       for k = 1:mdi.idx.nc(t,j)+1
         mpc = mdi.flow(t,j,k).mpc;
@@ -1116,7 +1117,7 @@ if mpopt.most.build_model
   % Include all units that are potentially committed.
   om.init_indexed_name('lin', 'dPdef', {nt, nj_max, nc_max+1});
   for t = 1:nt
-    for j = 1:mdi.idx.nj(t);
+    for j = 1:mdi.idx.nj(t)
       for k = 1:mdi.idx.nc(t,j)+1
         ii = find(mdi.flow(t,j,k).mpc.gen(:, GEN_STATUS) > 0);
         ngtmp = length(ii);
@@ -1128,7 +1129,23 @@ if mpopt.most.build_model
       end
     end
   end
-  
+  % Add dcline if field in mpc. The fun_userfcn function is used to
+  % add the linear constraints. The args field in formulation is used to
+  % pass vs and mpc.
+  % dclinecost is not implemented yet.
+  if isfield(mpc, 'dcline') && toggle_dcline(mpc,'status')
+      om.init_indexed_name('lin', 'dcline', {nt, nj_max, nc_max+1});
+      for t = 1:nt
+          for j = 1:mdi.idx.nj(t)
+            for k = 1:mdi.idx.nc(t)+1
+              vs = struct('name', {'Pg'}, 'idx', {{t,j,k}});
+              mdi.flow(t,j,k).mpc.userfcn.formulation.args.vs = vs;
+              mdi.flow(t,j,k).mpc.userfcn.formulation.args.mpc = mdi.flow(t,j,k).mpc;
+              om = run_userfcn(mdi.flow(t,j,k).mpc.userfcn,'formulation', om);
+            end
+          end
+      end
+  end
   % Go on to load following ramping restrictions.  Note that these
   % restrictions apply even if there is a change in the commitment status
   % of the generator.
@@ -1228,10 +1245,11 @@ if mpopt.most.build_model
         om.add_lin_constraint('Sm', {1,j}, A, [], u, vs);
       end
     else
-      % sm(1) + beta2*Delta_T*[eta_c*psc(1,j,0) + (1/eta_d)*psd(1,j,0)] <= beta1*Initial/baseMVA
+      % sm(1) + beta2*Delta_T*[eta_c*psc(1,j,0) + (1/eta_d)*psd(1,j,0)] <= beta1*(rho*InitialLB+(1-rho)*Initial)/baseMVA
       for j = 1:mdi.idx.nj(1)
         A = [ diagBeta2EtaIn1 diagBeta2overEtaOut1 Ins ];
-        u = beta1(:,1).*mdi.Storage.InitialStorageLowerBound/baseMVA;
+        u = beta1(:,1) .* ( rho(:,t).*mdi.Storage.InitialStorageLowerBound + ...
+                            (1-rho(:,t)).*mdi.Storage.InitialStorage ) / baseMVA;
         vs = struct('name', {'Psc', 'Psd', 'Sm'}, 'idx', {{1,j,1}, {1,j,1}, {1}});
         om.add_lin_constraint('Sm', {1,j}, A, [], u, vs);
       end
@@ -1272,10 +1290,11 @@ if mpopt.most.build_model
         om.add_lin_constraint('Sp', {1,j}, A, [], u, vs);
       end
     else
-      % -sp(1) - beta2*Delta_T*[eta_c*psc(1,j,0) + (1/eta_d)*psd(1,j,0)] <= -beta1*Initial/baseMVA
+      % -sp(1) - beta2*Delta_T*[eta_c*psc(1,j,0) + (1/eta_d)*psd(1,j,0)] <= -beta1*(rho*InitialUB+(1-rho)*Initial)/baseMVA
       for j = 1:mdi.idx.nj(1)
         A = [ -diagBeta2EtaIn1 -diagBeta2overEtaOut1 -Ins ];
-        u = -beta1(:,1).*mdi.Storage.InitialStorageUpperBound/baseMVA;
+        u = -beta1(:,1) .* ( rho(:,t).*mdi.Storage.InitialStorageUpperBound + ...
+                            (1-rho(:,t)).*mdi.Storage.InitialStorage ) / baseMVA;
         vs = struct('name', {'Psc', 'Psd', 'Sp'}, 'idx', {{1,j,1}, {1,j,1}, {1}});
         om.add_lin_constraint('Sp', {1,j}, A, [], u, vs);
       end
@@ -1931,15 +1950,30 @@ if mpopt.most.build_model
     Cfstor = sparse(1, nvars);
   end
 
-  % Plug into struct
+  %% handing of user-defined constraints and costs would go here
+
+  % Asssemble contraints, variable bounds and costs
+  if verbose
+    fprintf('- Assembling full set of constraints.\n');
+  end
+  [mdi.QP.A, mdi.QP.l, mdi.QP.u] = om.params_lin_constraint();
+  if verbose
+    fprintf('- Assembling full set of variable bounds.\n');
+  end
+  [mdi.QP.x0, mdi.QP.xmin, mdi.QP.xmax, mdi.QP.vtype] = om.params_var();
   if verbose
     fprintf('- Assembling full set of costs.\n');
   end
   [Q, c, k0] = om.params_quad_cost();
+
+  % Plug into struct
   mdi.QP.Cfstor = Cfstor;
   mdi.QP.H1 = Q;
   mdi.QP.C1 = c;
   mdi.QP.c1 = k0;
+  mdi.om = om;
+else
+  om = mdi.om;
 end     % if mpopt.most.build_model
 
 % With all pieces of the cost in place, can proceed to build the total
@@ -1966,22 +2000,12 @@ if isfield(mdi, 'CoordCost') && ...
 %   om.add_legacy_cost('CoordCost', cp);
 end
 
-mdi.om = om;
-[vv, ll] = om.get_idx();
-if verbose
-  fprintf('- Assembling full set of constraints.\n');
-end
-[mdi.QP.A, mdi.QP.l, mdi.QP.u] = om.params_lin_constraint();
-if verbose
-  fprintf('- Assembling full set of variable bounds.\n');
-end
-[mdi.QP.x0, mdi.QP.xmin, mdi.QP.xmax, mdi.QP.vtype] = om.params_var();
-
 et_setup = toc(t0);
 t0 = tic;
 
 % Call solver!
 mdo = mdi;
+[vv, ll] = om.get_idx();
 if mpopt.most.solve_model
   %% check consistency of model options (in case mdi was built in previous call)
   if mdi.DCMODEL ~= mo.DCMODEL
@@ -2252,7 +2276,28 @@ if mpopt.most.solve_model
       for j = 1:mdo.idx.nj(t)
         mdo.results.ExpectedDispatch(:,t) = mdo.results.ExpectedDispatch(:,t) + ...
               mdo.CostWeights(1,j,t)/pp * mdo.flow(t,j,1).mpc.gen(:,PG);
+          % Unpacking dcline results. Need to be done at this location
+          % beacuse the dummy generators are removed from the mpc file and
+          % ng and size(mpc.gen,1) are not of same size anymore.
+          for k = 1:mdi.idx.nc(t,j)+1
+            mpc = mdo.flow(t,j,k).mpc;
+            if isfield(mpc, 'dcline') && toggle_dcline(mpc,'status')
+              mpc = run_userfcn(mpc.userfcn,'int2ext',mpc);
+              mdo.flow(t,j,k).mpc = mpc;
+            end
+          end
       end
+    end
+    if isfield(mdo.mpc, 'dcline') && toggle_dcline(mpc,'status')
+        n_dclines = size(mdo.mpc.dcline,1);
+        mdo.mpc = run_userfcn(mdo.mpc.userfcn,'int2ext',mdo.mpc);
+        mdo_result_fields = fieldnames(mdo.results);
+        for i = 1:size(mdo_result_fields,1)
+            field = mdo_result_fields{i};
+            if ismatrix(mdo.results.(field))
+                mdo.results.(field) = mdo.results.(field)(1:(end-2*n_dclines),:);
+            end
+        end
     end
     % If Cyclic storage, pull InitialStorage value out of x
     if ns && mdo.Storage.ForceCyclicStorage
@@ -2296,11 +2341,11 @@ if mpopt.most.solve_model
     end
     mdo.results.f = mdo.QP.f;
   end   % if success
+  mdo.results.success = success;
+  mdo.results.SolveTime = toc(t0);
 end     % if mpopt.most.solve_model
 
-mdo.results.success = success;
 mdo.results.SetupTime = et_setup;
-mdo.results.SolveTime = toc(t0);
 
 if verbose
   fprintf('- MOST: Done.\n\n');

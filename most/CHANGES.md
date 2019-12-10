@@ -2,6 +2,27 @@ Change history for MOST
 =======================
 
 
+Changes since 1.0.2
+-------------------
+
+#### 8/27/19
+  - Update `most_summary` to include sections for fixed loads and
+    storage expected stored energy.
+    *Thanks to Baraa Mohandes.*
+  - Move assembly of constraints and variable bounds inside the
+    `build_model` conditional.
+    *Thanks to Baraa Mohandes.*
+
+#### 8/21/19
+  - Fix [bug #6][3] where building a model without solving it, or
+    solving a previously built model resulted in a fatal error.
+    *Thanks to Baraa Mohandes.*
+
+#### 8/20/19
+  - Fix [bug #11][2] where storage constraints were not correct for
+    t=1 and `rho ~= 1`. *Thanks to Baraa Mohandes.*
+
+
 Version 1.0.2 - *Jun 20, 2019*
 ------------------------------
 
@@ -184,3 +205,5 @@ Version 1.0 - *Jun 1, 2016*
 ---
 
 [1]: https://github.com/MATPOWER/most/issues/1
+[2]: https://github.com/MATPOWER/most/issues/11
+[3]: https://github.com/MATPOWER/most/issues/6
